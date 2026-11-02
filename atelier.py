@@ -12,6 +12,7 @@ from rezolva import alege_fisiere, copiaza_date, scrie_proiect
 from date_intrare import pregateste_date
 from enunturi import citeste_enunt, enunt_din_proiect
 from interpretare import planifica
+from control import verifica_rezultate
 
 lucru = Path("/lucru")
 intrari = lucru / "intrari"
@@ -26,6 +27,7 @@ def incepe():
 
 
 def interpreteaza_web(config):
+    global context_calcul
     cfg = json.loads(config)
     arhive = list(intrari.glob("*.zip"))
     sursa = arhive[0] if arhive else intrari
@@ -43,6 +45,7 @@ def interpreteaza_web(config):
     _, indicatori, _ = pregateste_date(date, principal, [], [])
     pasi = planifica(text, indicatori, cfg["categorie"] or None)
     scrie_proiect(proiect, principal, auxiliare, pasi)
+    context_calcul = principal, auxiliare, pasi
     cod = (proiect / "solutie.py").read_text(encoding="utf-8")
     return json.dumps({"principal": principal, "pasi": pasi, "text": text, "cod": cod}, ensure_ascii=False)
 
@@ -50,6 +53,7 @@ def interpreteaza_web(config):
 def calculeaza_web():
     # Executăm exact scriptul afișat. Grupăm fișierele rezultate în data_out pentru arhivă.
     runpy.run_path(str(proiect / "solutie.py"), run_name="__main__")
+    verifica_rezultate(proiect / "data_in", *context_calcul, proiect)
     iesiri = proiect / "data_out"
     iesiri.mkdir(exist_ok=True)
     rezultate = []

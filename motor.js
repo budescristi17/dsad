@@ -7,10 +7,10 @@ async function incarcare() {
   const py = await loadPyodide({indexURL:CDN});
   status("Se încarcă bibliotecile pentru calcule și clasificare…");
   await py.loadPackage(["scikit-learn", "pandas", "scipy"]);
-  const res = await fetch("motor.zip?v=3");
+  const res = await fetch("motor.zip?v=4");
   if (!res.ok) throw new Error("Motorul de calcul nu a putut fi descărcat.");
   py.unpackArchive(await res.arrayBuffer(),"zip",{extractDir:"/motor"});
-  const bridge = await fetch("atelier.py?v=3");
+  const bridge = await fetch("atelier.py?v=4");
   if (!bridge.ok) throw new Error("Adaptorul Python nu a putut fi încărcat.");
   await py.runPythonAsync("import sys\nsys.path.insert(0, '/motor')\nsys.dont_write_bytecode = True\n" + await bridge.text());
   return py;
@@ -27,11 +27,12 @@ self.onmessage = async ({data}) => {
         py.FS.writeFile("/lucru/intrari/"+file.name, new Uint8Array(await file.arrayBuffer()));
       }
       py.globals.set("config_web", JSON.stringify(data.config));
-      postMessage({type:"plan", ...JSON.parse(await py.runPythonAsync("interpreteaza_web(config_web)"))});
-      status("Se calculează tabelele și se creează arhiva ZIP…");
+      const plan = JSON.parse(await py.runPythonAsync("interpreteaza_web(config_web)"));
+      status("Se calculează tabelele și se verifică rezultatele…");
       const outputs = JSON.parse(await py.runPythonAsync("calculeaza_web()"));
       for (const out of outputs) out.bytes = py.FS.readFile("/lucru/proiect/data_out/"+out.nume);
       const bytes = py.FS.readFile("/lucru/rezolvare.zip");
+      postMessage({type:"plan", ...plan});
       postMessage({type:"done",outputs, bytes},[bytes.buffer, ...outputs.map(out => out.bytes.buffer)]);
     }
   } catch (err) {

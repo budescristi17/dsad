@@ -21,7 +21,8 @@ def medie_ponderata(df, variabile, pondere):
     return pd.Series(np.average(df[variabile], axis=0, weights=ponderi), index=variabile)
 
 # Cerința 1. Să se salveze în fișierul Output1.csv raportul dintre cifra de afaceri și numărul de salariați pentru fiecare localitate unde există salariați. Datele vor fi salvate în ordine descrescătoare a acestui raport. Pentru fiecare localitate se va afișa codul Siruta, denumirea localității și raportul dintre cifra de afaceri și numărul de salariați.
-t1 = t.loc[t['NrSal'] > 0].copy()
+selectie = t.loc[t['NrSal'] > 0]
+t1 = selectie.loc[selectie['NrSal'] != 0].copy()
 t1['Raport CA/NrSal'] = t1['TotalCifraAfaceri'] / t1['NrSal']
 t1 = t1[['DenLocalitate', 'Raport CA/NrSal']]
 t1 = t1.sort_values('Raport CA/NrSal', ascending=False, kind='stable')
@@ -35,7 +36,7 @@ t2 = t2.sort_values('Rata Ocuparii', ascending=False, kind='stable')
 t2.to_csv(baza / 'Output2.csv')
 
 # Cerința 3. Să se determine pentru fiecare județ localitatea cu cel mai mare profit pe locuitor și să se salveze în fișierul Output3.csv. Pentru fiecare județ se va salva indicativul de județ și denumirea localității cerute.
-t3 = t.loc[t['Populatie'] > 0].copy()
+t3 = t.loc[t['Populatie'] != 0].copy()
 scor = t3['TotalProfit'] / t3['Populatie']
 coduri = scor.groupby(t3['Judet']).idxmax()
 t3 = t3.loc[coduri, ['Judet', 'DenLocalitate']].rename(columns={'DenLocalitate': 'Localitate'})

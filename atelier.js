@@ -93,7 +93,7 @@ function rezultatCsv(out) {
 }
 function motor() {
   if (worker) return worker;
-  worker = new Worker("motor.js?v=3");
+  worker = new Worker("motor.js?v=4");
   worker.onerror = e => {
     el("status").textContent = e.message || "Motorul nu a pornit. Verifică accesul la internet și reîncearcă.";
     busy(false); worker.terminate(); worker = null;
@@ -110,8 +110,18 @@ function motor() {
       el("plan").replaceChildren(...data.pasi.map(p=>{
         const li = document.createElement("li"), title = document.createElement("strong"), details = document.createElement("code");
         title.textContent = p.functie + " → " + p.fisier;
-        details.textContent = Object.entries(p.parametri).map(([k,v])=>k+" = "+JSON.stringify(v)).join(" · ")
-           + (p.sortare ? " · sortare = "+p.sortare : "");
+        const v = p.parametri;
+        const rata = ["raport_local","rata_grupata","prezenta_vot"].includes(p.functie);
+        const formula = p.functie === "prezenta_vot" ? "100 × LT / (Votanti_LP + Votanti_LS), pe localitate"
+          : rata ? (v.grup ? "Totaluri pe " + v.grup + ": " : "Pe fiecare rând: ")
+            + (v.separat ? "fiecare dintre " : "") + v.numarator.join(v.separat ? ", " : " + ").replace(/^(.+ \+ .+)$/, "($1)")
+            + " / " + v.numitor + (v.factor !== 1 ? " × " + v.factor : "")
+          : "";
+        details.textContent = (formula || Object.entries(v).map(([k,x])=>k+" = "+JSON.stringify(x)).join(" · "))
+           + (p.functie === "prezenta_vot" && v.prag != null ? " · după calcul: Procent " + ({lt:"<",le:"<=",gt:">",ge:">=",eq:"=="}[v.comparatie]) + " " + v.prag : "")
+           + (p.sortare ? " · sortare = "+p.sortare : "")
+           + (p.filtre || []).map(f => " · " + (f.rezultat ? "după calcul: " : "înainte de calcul: ") + (f.rezultat || f.camp) + " " + f.op + " " + f.prag).join("")
+           + (rata || ["localitate_extrema","medii_ponderate","medie_grupata","total_grupat","total_local"].includes(p.functie) ? " · Rezultat reverificat din CSV-urile sursă." : "");
         li.append(title, details); return li;
       }));
       el("review").hidden = false;
