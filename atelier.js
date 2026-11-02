@@ -1,15 +1,21 @@
 const el = id => document.getElementById(id);
-let files = [], statement = null, worker, downloadURL;
+let files = [], statement = null, worker;
+const urls = [];
+function fisierNou(bytes, type) {
+  const url = URL.createObjectURL(new Blob([bytes],{type}));
+  urls.push(url);
+  return url;
+}
 function reset() {
   el("review").hidden = true;
   el("result").hidden = true;
   el("status").textContent = "";
-  if (downloadURL) { URL.revokeObjectURL(downloadURL); downloadURL = null; }
+  urls.splice(0).forEach(url => URL.revokeObjectURL(url));
+  el("copy").textContent = "Copiază codul";
 }
 function busy(on) {
   el("fields").disabled = on;
   el("demo").disabled = on;
-  el("run").disabled = on;
 }
 function selectFiles(list) {
   reset();
@@ -50,12 +56,44 @@ el("demo").onclick = async () => {
     selectFiles([new File([await data.blob()], "exemplu.zip")]);
     setStatement(null);
     el("text").value = await text.text(); el("primary").value = ""; el("category").value = "";
-    el("status").textContent = "Exemplul este încărcat. Apasă „Interpretează cerințele”.";
-  } catch(err) { el("status").textContent = err.message; } finally { busy(false); }
+    busy(false); el("form").requestSubmit();
+  } catch(err) { el("status").textContent = err.message; busy(false); }
 };
+el("copy").onclick = async () => {
+  try {
+    await navigator.clipboard.writeText(el("code").textContent);
+    el("copy").textContent = "Cod copiat";
+  } catch {
+    const range = document.createRange();
+    range.selectNodeContents(el("code"));
+    const selection = window.getSelection();
+    selection.removeAllRanges(); selection.addRange(range);
+    el("copy").textContent = "Cod selectat • copiază cu Ctrl+C";
+  }
+};
+function rezultatCsv(out) {
+  const box = document.createElement("details");
+  box.open = true;
+  const title = document.createElement("summary");
+  title.textContent = out.nume + " · " + out.total + " rânduri";
+  const scroll = document.createElement("div"); scroll.className = "csv";
+  const table = document.createElement("table");
+  for (const [i,row] of [out.antet, ...out.mostra].entries()) {
+    const tr = table.insertRow();
+    for (const value of row) {
+      const cell = document.createElement(i === 0 ? "th" : "td");
+      cell.textContent = value; tr.append(cell);
+    }
+  }
+  scroll.append(table);
+  const link = document.createElement("a");
+  link.href = fisierNou(out.bytes, "text/csv;charset=utf-8");
+  link.download = out.nume; link.textContent = "Descarcă " + out.nume;
+  box.append(title, scroll, link); return box;
+}
 function motor() {
   if (worker) return worker;
-  worker = new Worker("motor.js");
+  worker = new Worker("motor.js?v=2");
   worker.onerror = e => {
     el("status").textContent = e.message || "Motorul nu a pornit. Verifică accesul la internet și reîncearcă.";
     busy(false); worker.terminate(); worker = null;
@@ -63,10 +101,11 @@ function motor() {
   worker.onmessage = ({data}) => {
     if (data.type === "status" || data.type === "error") el("status").textContent = data.text;
     if (data.type === "status") return;
-    busy(false);
+    if (data.type === "done" || data.type === "error") busy(false);
     if (data.type === "plan") {
       el("text").value = data.text;
-      el("status").textContent = "Verifică operația și coloanele înainte de calcul.";
+      el("code").textContent = data.cod;
+      el("python").href = fisierNou(data.cod, "text/x-python;charset=utf-8");
       el("table").textContent = "Tabel principal · " + data.principal;
       el("plan").replaceChildren(...data.pasi.map(p=>{
         const li = document.createElement("li"), title = document.createElement("strong"), details = document.createElement("code");
@@ -78,13 +117,10 @@ function motor() {
       el("review").hidden = false;
       el("review").scrollIntoView({block:"start"});
     } else if (data.type === "done") {
-      if (downloadURL) URL.revokeObjectURL(downloadURL);
-      downloadURL = URL.createObjectURL(new Blob([data.bytes],{type:"application/zip"}));
-      el("download").href = downloadURL;
-      el("outputs").textContent = data.outputs.join(" · ");
+      el("download").href = fisierNou(data.bytes, "application/zip");
+      el("outputs").replaceChildren(...data.outputs.map(rezultatCsv));
       el("result").hidden = false;
       el("status").textContent = "Calcul încheiat.";
-      el("result").scrollIntoView({block:"center"});
     }
   };
   return worker;
@@ -97,7 +133,6 @@ el("form").onsubmit = e => {
     const all = statement ? [...files, statement] : files;
     if (new Set(all.map(f=>f.name.toLowerCase())).size !== all.length) throw Error("Există fișiere cu același nume. Selectează un singur set de date.");
     busy(true); el("status").textContent = "Se pornește motorul…";
-    motor().postMessage({action:"plan",files:all,config:{text:el("text").value,principal:el("primary").value.trim(),categorie:el("category").value.trim()}});
+    motor().postMessage({action:"solve",files:all,config:{text:el("text").value,principal:el("primary").value.trim(),categorie:el("category").value.trim()}});
   } catch(err) { busy(false); el("status").textContent = err.message; }
 };
-el("run").onclick = () => { busy(true); motor().postMessage({action:"run"}); };

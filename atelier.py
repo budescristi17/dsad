@@ -1,5 +1,7 @@
 """Adaptor pentru sistemul de fișiere în memorie din browser."""
 import json
+import csv
+from itertools import islice
 import runpy
 import shutil
 import sys
@@ -41,19 +43,26 @@ def interpreteaza_web(config):
     _, indicatori, _ = pregateste_date(date, principal, [], [])
     pasi = planifica(text, indicatori, cfg["categorie"] or None)
     scrie_proiect(proiect, principal, auxiliare, pasi)
-    return json.dumps({"principal": principal, "pasi": pasi, "text": text}, ensure_ascii=False)
+    cod = (proiect / "solutie.py").read_text(encoding="utf-8")
+    return json.dumps({"principal": principal, "pasi": pasi, "text": text, "cod": cod}, ensure_ascii=False)
 
 
 def calculeaza_web():
-    sys.modules.pop("functii", None)
-    sys.path.insert(0, str(proiect))
-    try:
-        runpy.run_path(str(proiect / "main.py"), run_name="__main__")
-    finally:
-        sys.path.remove(str(proiect))
-        sys.modules.pop("functii", None)
+    # Executăm exact scriptul afișat. Grupăm fișierele rezultate în data_out pentru arhivă.
+    runpy.run_path(str(proiect / "solutie.py"), run_name="__main__")
+    iesiri = proiect / "data_out"
+    iesiri.mkdir(exist_ok=True)
+    rezultate = []
+    for f in sorted(proiect.glob("*.csv")):
+        with f.open(encoding="utf-8", newline="") as sursa:
+            cititor = csv.reader(sursa)
+            antet = next(cititor)
+            mostra = list(islice(cititor, 5))
+            total = len(mostra) + sum(1 for _ in cititor)
+        rezultate.append(dict(nume=f.name, antet=antet, mostra=mostra, total=total))
+        f.replace(iesiri / f.name)
     with ZipFile(lucru / "rezolvare.zip", "w", ZIP_DEFLATED) as z:
         for f in sorted(proiect.rglob("*")):
             if f.is_file() and "__pycache__" not in f.parts:
                 z.write(f, f.relative_to(proiect))
-    return json.dumps(sorted(f.name for f in (proiect / "data_out").glob("*.csv")))
+    return json.dumps(rezultate, ensure_ascii=False)
