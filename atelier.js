@@ -93,7 +93,7 @@ function rezultatCsv(out) {
 }
 function motor() {
   if (worker) return worker;
-  worker = new Worker("motor.js?v=2");
+  worker = new Worker("motor.js?v=3");
   worker.onerror = e => {
     el("status").textContent = e.message || "Motorul nu a pornit. Verifică accesul la internet și reîncearcă.";
     busy(false); worker.terminate(); worker = null;

@@ -7,10 +7,10 @@ async function incarcare() {
   const py = await loadPyodide({indexURL:CDN});
   status("Se încarcă bibliotecile pentru calcule și clasificare…");
   await py.loadPackage(["scikit-learn", "pandas", "scipy"]);
-  const res = await fetch("motor.zip?v=2");
+  const res = await fetch("motor.zip?v=3");
   if (!res.ok) throw new Error("Motorul de calcul nu a putut fi descărcat.");
   py.unpackArchive(await res.arrayBuffer(),"zip",{extractDir:"/motor"});
-  const bridge = await fetch("atelier.py?v=2");
+  const bridge = await fetch("atelier.py?v=3");
   if (!bridge.ok) throw new Error("Adaptorul Python nu a putut fi încărcat.");
   await py.runPythonAsync("import sys\nsys.path.insert(0, '/motor')\nsys.dont_write_bytecode = True\n" + await bridge.text());
   return py;
