@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#153f37"><title>DSAD</title><link rel="stylesheet" href="stil.css"><script src="atelier.js" defer></script></head>
+<body><header><div class="brand"><span class="mark" aria-hidden="true">∑</span> DSAD</div><span class="tag">Laborator de statistică</span></header>
+<main><div class="intro"><p class="kicker">CAIET DE LUCRU &nbsp;/&nbsp; DSAD</p><h1>Rezolvitor de seminar</h1><p>Adaugă datele și cerințele. Verifică formulele, apoi descarcă proiectul Python și rezultatele CSV.</p></div>
+<div class="layout"><section class="card"><form id="form"><fieldset id="fields"><legend class="sr">Configurare proiect</legend>
+<h2><span>01</span> Date de intrare</h2>
+<div class="picker"><strong>CSV-uri sau arhivă de seminar</strong><small>Poți alege și un proiect cu dosarul data_in.</small>
+<div class="actions"><button type="button" id="choose">Alege fișiere</button><button type="button" class="light" id="folder">Alege dosar</button></div>
+<input type="file" id="files" accept=".csv,.zip" multiple hidden><input type="file" id="dir" webkitdirectory multiple hidden></div>
+<p id="selection" class="small">Niciun fișier selectat.</p>
+<h2><span>02</span> Cerințe</h2><label for="text">Enunț în limba română</label>
+<textarea id="text" rows="7" placeholder="1. Să se calculeze…"></textarea>
+<div class="row"><button type="button" class="link" id="load">Alege fișa PDF / TXT</button><span class="small" id="sheet"></span></div>
+<input hidden type="file" id="statement" accept=".txt,.pdf">
+<details><summary>Opțiuni pentru datele de seminar</summary><label for="primary">Fișier principal (dacă există mai mulți candidați)</label><input id="primary" placeholder="Industrie.csv"><label for="category">Categorie pentru filtrarea votului</label><input id="category" placeholder="Barbati_35-44"></details>
+<button class="primary" type="submit">Interpretează cerințele <b>→</b></button></fieldset></form>
+</section><aside><section class="example"><p class="kicker">EXERCIȚIU GHIDAT</p><h2>Modelul din fotografie</h2><p>Încearcă cele patru cerințe despre firme, salariați și populație pe un set de date fictive.</p><button id="demo" class="light">Încarcă exemplul <b>↗</b></button></section>
+<section class="note"><h3>Proiectul descărcat</h3><pre>rezolvare.zip
+├── main.py
+├── functii.py
+├── data_in/
+└── data_out/</pre><p>Calculele rulează în browser. Fișierele selectate rămân pe dispozitiv.</p></section></aside></div>
+<p id="status" role="status" aria-live="polite"></p><section class="card" id="review" hidden><h2><span>03</span> Verifică interpretarea</h2><p id="table"></p><ol id="plan"></ol><button id="run">Calculează și pregătește ZIP-ul</button></section>
+<section class="card result" id="result" hidden><h2>Proiectul este pregătit</h2><p id="outputs"></p><a id="download" download="Rezolvare_DSAD.zip">Descarcă proiectul ZIP ↓</a></section>
+</main><footer>DSAD <span>Clasificare TF-IDF · Calcule în Python</span></footer></body></html>

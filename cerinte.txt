@@ -1,0 +1,15 @@
+1. Să se salveze în fișierul Output1.csv raportul dintre cifra de afaceri și numărul de salariați pentru fiecare localitate unde există salariați. Datele vor fi salvate în ordine descrescătoare a acestui raport. Pentru fiecare localitate se va afișa codul Siruta, denumirea localității și raportul dintre cifra de afaceri și numărul de salariați.
+Exemplu
+Siruta,DenLocalitate,Raport CA/NrSal
+
+2. Să se calculeze rata ocupării populației ca număr de salariați la 1000 locuitori pentru fiecare județ. Datele vor fi salvate în ordine descrescătoare a ratei, în fișierul Output2.csv. Pentru fiecare județ se va afișa indicativul de județ și rata ocupării.
+Exemplu
+Judet,Rata Ocuparii
+
+3. Să se determine pentru fiecare județ localitatea cu cel mai mare profit pe locuitor și să se salveze în fișierul Output3.csv. Pentru fiecare județ se va salva indicativul de județ și denumirea localității cerute.
+Exemplu
+Judet,Localitate
+
+4. Să se calculeze valorile medii ale indicatorilor la nivel de județ (media localităților din județ) și să se salveze în fișierul Output4.csv. Se va calcula media ponderată, folosind ca pondere populația localităților. Pentru fiecare județ se va afișa indicativul de județ și cele 5 medii.
+Exemplu
+Judet,NrFirme,NrSal,TotalCifraAfaceri,TotalProfit,TotalPierdere

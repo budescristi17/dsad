@@ -1,0 +1,103 @@
+const el = id => document.getElementById(id);
+let files = [], statement = null, worker, downloadURL;
+function reset() {
+  el("review").hidden = true;
+  el("result").hidden = true;
+  el("status").textContent = "";
+  if (downloadURL) { URL.revokeObjectURL(downloadURL); downloadURL = null; }
+}
+function busy(on) {
+  el("fields").disabled = on;
+  el("demo").disabled = on;
+  el("run").disabled = on;
+}
+function selectFiles(list) {
+  reset();
+  files = list;
+  el("selection").textContent = files.length ? files.map(f=>f.name).join(" · ") : "Niciun fișier selectat.";
+}
+function setStatement(file) {
+  statement = file;
+  el("sheet").textContent = file ? file.name : "";
+}
+el("choose").onclick = () => el("files").click();
+el("folder").onclick = () => el("dir").click();
+el("load").onclick = () => el("statement").click();
+el("files").onchange = e => { selectFiles([...e.target.files]); e.target.value = ""; };
+el("dir").onchange = e => {
+  const list = [...e.target.files];
+  const csv = list.filter(f=>/\.csv$/i.test(f.name) && !/(^|\/)data_out\//i.test(f.webkitRelativePath));
+  const inputs = csv.filter(f=>/(^|\/)data_in\//i.test(f.webkitRelativePath));
+  selectFiles(inputs.length ? inputs : csv);
+  const pdf = list.filter(f=>/^tema.*\.pdf$/i.test(f.name));
+  if (!el("text").value.trim()) setStatement(pdf.length === 1 ? pdf[0] : null);
+  e.target.value = "";
+};
+el("statement").onchange = e => {
+  const f = e.target.files[0];
+  if (f) { reset(); setStatement(f); el("text").value = ""; }
+  e.target.value = "";
+};
+for (const id of ["text","primary","category"]) el(id).oninput = () => {
+  reset();
+  if (id === "text") setStatement(null);
+};
+el("demo").onclick = async () => {
+  busy(true); reset();
+  try {
+    const [data, text] = await Promise.all(["exemplu.zip","cerinte.txt"].map(f=>fetch(f)));
+    if (!data.ok || !text.ok) throw Error("Exemplul nu a putut fi încărcat.");
+    selectFiles([new File([await data.blob()], "exemplu.zip")]);
+    setStatement(null);
+    el("text").value = await text.text(); el("primary").value = ""; el("category").value = "";
+    el("status").textContent = "Exemplul este încărcat. Apasă „Interpretează cerințele”.";
+  } catch(err) { el("status").textContent = err.message; } finally { busy(false); }
+};
+function motor() {
+  if (worker) return worker;
+  worker = new Worker("motor.js");
+  worker.onerror = e => {
+    el("status").textContent = e.message || "Motorul nu a pornit. Verifică accesul la internet și reîncearcă.";
+    busy(false); worker.terminate(); worker = null;
+  };
+  worker.onmessage = ({data}) => {
+    if (data.type === "status" || data.type === "error") el("status").textContent = data.text;
+    if (data.type === "status") return;
+    busy(false);
+    if (data.type === "plan") {
+      el("text").value = data.text;
+      el("status").textContent = "Verifică operația și coloanele înainte de calcul.";
+      el("table").textContent = "Tabel principal · " + data.principal;
+      el("plan").replaceChildren(...data.pasi.map(p=>{
+        const li = document.createElement("li"), title = document.createElement("strong"), details = document.createElement("code");
+        title.textContent = p.functie + " → " + p.fisier;
+        details.textContent = Object.entries(p.parametri).map(([k,v])=>k+" = "+JSON.stringify(v)).join(" · ")
+           + (p.sortare ? " · sortare = "+p.sortare : "");
+        li.append(title, details); return li;
+      }));
+      el("review").hidden = false;
+      el("review").scrollIntoView({block:"start"});
+    } else if (data.type === "done") {
+      if (downloadURL) URL.revokeObjectURL(downloadURL);
+      downloadURL = URL.createObjectURL(new Blob([data.bytes],{type:"application/zip"}));
+      el("download").href = downloadURL;
+      el("outputs").textContent = data.outputs.join(" · ");
+      el("result").hidden = false;
+      el("status").textContent = "Calcul încheiat.";
+      el("result").scrollIntoView({block:"center"});
+    }
+  };
+  return worker;
+}
+el("form").onsubmit = e => {
+  e.preventDefault(); reset();
+  try {
+    if (!files.length) throw Error("Alege fișierele CSV, un dosar sau o arhivă ZIP.");
+    if (files.some(f=>/\.zip$/i.test(f.name)) && files.length > 1) throw Error("Alege o singură arhivă ZIP sau un grup de CSV-uri.");
+    const all = statement ? [...files, statement] : files;
+    if (new Set(all.map(f=>f.name.toLowerCase())).size !== all.length) throw Error("Există fișiere cu același nume. Selectează un singur set de date.");
+    busy(true); el("status").textContent = "Se pornește motorul…";
+    motor().postMessage({action:"plan",files:all,config:{text:el("text").value,principal:el("primary").value.trim(),categorie:el("category").value.trim()}});
+  } catch(err) { busy(false); el("status").textContent = err.message; }
+};
+el("run").onclick = () => { busy(true); motor().postMessage({action:"run"}); };
