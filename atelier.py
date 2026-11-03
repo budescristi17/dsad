@@ -2,6 +2,7 @@
 import json
 import csv
 from itertools import islice
+from contextlib import chdir
 import runpy
 import shutil
 import sys
@@ -46,25 +47,24 @@ def interpreteaza_web(config):
     pasi = planifica(text, indicatori, cfg["categorie"] or None)
     scrie_proiect(proiect, principal, auxiliare, pasi)
     context_calcul = principal, auxiliare, pasi
-    cod = (proiect / "solutie.py").read_text(encoding="utf-8")
+    cod = (proiect / "main.py").read_text(encoding="utf-8")
     return json.dumps({"principal": principal, "pasi": pasi, "text": text, "cod": cod}, ensure_ascii=False)
 
 
 def calculeaza_web():
     # Executăm exact scriptul afișat. Grupăm fișierele rezultate în data_out pentru arhivă.
-    runpy.run_path(str(proiect / "solutie.py"), run_name="__main__")
-    verifica_rezultate(proiect / "data_in", *context_calcul, proiect)
+    with chdir(proiect):
+        runpy.run_path(str(proiect / "main.py"), run_name="__main__")
     iesiri = proiect / "data_out"
-    iesiri.mkdir(exist_ok=True)
+    verifica_rezultate(proiect / "data_in", *context_calcul, iesiri)
     rezultate = []
-    for f in sorted(proiect.glob("*.csv")):
+    for f in sorted(iesiri.glob("*.csv")):
         with f.open(encoding="utf-8", newline="") as sursa:
             cititor = csv.reader(sursa)
             antet = next(cititor)
             mostra = list(islice(cititor, 5))
             total = len(mostra) + sum(1 for _ in cititor)
         rezultate.append(dict(nume=f.name, antet=antet, mostra=mostra, total=total))
-        f.replace(iesiri / f.name)
     with ZipFile(lucru / "rezolvare.zip", "w", ZIP_DEFLATED) as z:
         for f in sorted(proiect.rglob("*")):
             if f.is_file() and "__pycache__" not in f.parts:
